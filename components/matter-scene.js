@@ -1,10 +1,55 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as Matter from 'matter-js';
+
+
+import svgPaths from './svgpaths.json';
 
 export default function MatterScene() {
   const sceneRef = useRef();
+  const engineRef = useRef(null);
+  const [highestBody, setHighestBody] = useState(-1);
+  const bodiesRef = useRef([]);
+
+  const findHighest = () => {
+    if (!engineRef.current || bodiesRef.current.length === 0) return;
+
+    const bodies = bodiesRef.current;
+    bodies.forEach(body => {
+      body.render.fillStyle = 'white';
+    });
+    const highestBody = bodies.reduce((highest, body) => {
+      return body.position.y < highest.position.y ? body : highest;
+    }, bodies[0]);
+  
+    console.log('Highest Body:', highestBody.position.y);
+    highestBody.render.fillStyle= 'red';
+    setHighestBody(highestBody.position.y);
+  };
+
+  const makeBody = (svgPath) => {
+    //error 
+    const vertices = Matter.Svg.pathToVertices(svgPath, 30);
+    
+    const { width, height } = engineRef.current.render.options;
+    
+    const svgBody = Matter.Bodies.fromVertices(
+      width * 0.3, 
+      height * 0.3, 
+      vertices, 
+      {
+        render: {
+          fillStyle: 'white',
+          strokeStyle: 'black',
+          lineWidth: 1
+        }
+      },
+      true 
+    );
+    
+    return svgBody;
+  }
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -14,6 +59,8 @@ export default function MatterScene() {
     const engine = Engine.create({
       gravity: { x: 0, y: 1 }
     });
+
+    engineRef.current = engine;
 
     // Our renderer. renders inside sceneRef.current.
     const render = Render.create({
@@ -49,16 +96,26 @@ export default function MatterScene() {
     const createBodies = () => {
       const { width, height } = render.options;
       return [
-        Bodies.rectangle(width * 0.3, height * 0.3, 80, 80),
-        Bodies.rectangle(width * 0.7, height * 0.2, 80, 80),
-        Bodies.circle(width * 0.5, height * 0.1, 40)
+        makeBody(svgPaths['a']),
+        Bodies.rectangle(width * 0.7, height * 0.2, 80, 80, {
+          render: {
+            fillStyle: 'white'
+          }
+        }),
+        Bodies.circle(width * 0.5, height * 0.1, 40, {
+          render: {
+            fillStyle: 'white'
+          }
+        }),
       ];
     };
 
     // add walls and bodies to world.
+    const bodies = createBodies();
+    bodiesRef.current = bodies;
     Composite.add(engine.world, [
       ...createWalls(),
-      ...createBodies()
+      ...bodiesRef.current
     ]);
 
     // create a mouse and mouse constraint.
@@ -124,9 +181,18 @@ export default function MatterScene() {
   }, []);
 
   return (
-    <div 
-      ref={sceneRef} 
-      className="w-full h-full absolute inset-0 overflow-hidden"
-    />
+    <div>
+      <div className="">
+        <div 
+          ref={sceneRef} 
+          className="w-full h-full absolute inset-0 overflow-hidden"
+        />
+        
+      </div>
+      <button className="bg-red-500 z-10 relative" onClick={findHighest}>Submit</button>
+      <p>{highestBody}</p>
+    </div>
+
+    
   );
 }
