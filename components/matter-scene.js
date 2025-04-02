@@ -1,10 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useRef } from 'react';
-import * as Matter from 'matter-js';
-
-
-import svgPaths from './svgpaths.json';
+import { useEffect, useState, useRef } from "react";
+import * as Matter from "matter-js";
+import "pathseg";
+import svgPaths from "./svgpaths.json";
 
 export default function MatterScene() {
   const sceneRef = useRef();
@@ -12,52 +11,78 @@ export default function MatterScene() {
   const [highestBody, setHighestBody] = useState(-1);
   const bodiesRef = useRef([]);
 
+  var decomp = require("poly-decomp");
+
   const findHighest = () => {
     if (!engineRef.current || bodiesRef.current.length === 0) return;
 
     const bodies = bodiesRef.current;
-    bodies.forEach(body => {
-      body.render.fillStyle = 'white';
+    bodies.forEach((body) => {
+      body.render.fillStyle = "white";
+      body.render.fillStyle = "white";
     });
     const highestBody = bodies.reduce((highest, body) => {
       return body.position.y < highest.position.y ? body : highest;
     }, bodies[0]);
-  
-    console.log('Highest Body:', highestBody.position.y);
-    highestBody.render.fillStyle= 'red';
+
+    console.log("Highest Body:", highestBody.position.y);
+    highestBody.render.fillStyle = "red";
+    highestBody.render.strokeStyle = "red";
+    console.log(highestBody);
     setHighestBody(highestBody.position.y);
   };
 
-  const makeBody = (svgPath) => {
-    //error 
-    const vertices = Matter.Svg.pathToVertices(svgPath, 30);
-    
-    const { width, height } = engineRef.current.render.options;
-    
+  const makeBody = (svgPath, x, y) => {
+    // create svg element given our path and the w3 api
+    const pathEl = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    pathEl.setAttribute("d", svgPath);
+    const vertices = Matter.Svg.pathToVertices(pathEl, 1); //convert path with given precision
+
+    //const { width, height } = 100;
+
+    //console.log(vertices);
+
+    //create body. should use poly-decomp and pathseg!
     const svgBody = Matter.Bodies.fromVertices(
-      width * 0.3, 
-      height * 0.3, 
-      vertices, 
+      x,
+      y,
+      vertices,
       {
         render: {
-          fillStyle: 'white',
-          strokeStyle: 'black',
-          lineWidth: 1
-        }
+          fillStyle: "white",
+          strokeStyle: "white",
+          lineWidth: 2,
+        },
       },
-      true 
+      true
     );
-    
+
+    //console.log(svgBody);
+    //make it bigger!
+    Matter.Body.scale(svgBody, 3, 3);
     return svgBody;
-  }
+  };
 
   useEffect(() => {
+    //very important, we need this to use decomp
+    Matter.Common.setDecomp(decomp);
     if (!sceneRef.current) return;
 
-    const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint } = Matter;
+    const {
+      Engine,
+      Render,
+      Runner,
+      Bodies,
+      Composite,
+      Mouse,
+      MouseConstraint,
+    } = Matter;
 
     const engine = Engine.create({
-      gravity: { x: 0, y: 1 }
+      gravity: { x: 0, y: 1 },
     });
 
     engineRef.current = engine;
@@ -70,8 +95,8 @@ export default function MatterScene() {
         width: sceneRef.current.clientWidth,
         height: sceneRef.current.clientHeight,
         wireframes: false,
-        background: 'transparent'
-      }
+        background: "transparent",
+      },
     });
 
     // method that returns an array of boundary walls
@@ -88,7 +113,7 @@ export default function MatterScene() {
         // right
         Bodies.rectangle(width, height / 2, wallThickness, height, wallOptions),
         // top
-        Bodies.rectangle(width / 2, 0, width, wallThickness, wallOptions)
+        Bodies.rectangle(width / 2, 0, width, wallThickness, wallOptions),
       ];
     };
 
@@ -96,27 +121,17 @@ export default function MatterScene() {
     const createBodies = () => {
       const { width, height } = render.options;
       return [
-        makeBody(svgPaths['a']),
-        Bodies.rectangle(width * 0.7, height * 0.2, 80, 80, {
-          render: {
-            fillStyle: 'white'
-          }
-        }),
-        Bodies.circle(width * 0.5, height * 0.1, 40, {
-          render: {
-            fillStyle: 'white'
-          }
-        }),
+        makeBody(svgPaths["s"], 10, 100),
+        makeBody(svgPaths["h"], 60, 100),
+        makeBody(svgPaths["i"], 110, 100),
+        makeBody(svgPaths["t"], 160, 100),
       ];
     };
 
     // add walls and bodies to world.
     const bodies = createBodies();
     bodiesRef.current = bodies;
-    Composite.add(engine.world, [
-      ...createWalls(),
-      ...bodiesRef.current
-    ]);
+    Composite.add(engine.world, [...createWalls(), ...bodiesRef.current]);
 
     // create a mouse and mouse constraint.
     const mouse = Mouse.create(render.canvas);
@@ -124,15 +139,17 @@ export default function MatterScene() {
       mouse: mouse,
       constraint: {
         stiffness: 0.2,
-        render: { visible: false }
-      }
+        render: { visible: false },
+      },
     });
 
     // method to prevent an event. use when wheel or domscroll occurs.
     // passive : false indicates that the method may call event.preventDefault()
     const preventScroll = (event) => event.preventDefault();
-    render.canvas.addEventListener('wheel', preventScroll, { passive: false });
-    render.canvas.addEventListener('DOMMouseScroll', preventScroll, { passive: false });
+    render.canvas.addEventListener("wheel", preventScroll, { passive: false });
+    render.canvas.addEventListener("DOMMouseScroll", preventScroll, {
+      passive: false,
+    });
 
     const rotateBody = (event) => {
       // keys e and q, respectively.
@@ -140,39 +157,42 @@ export default function MatterScene() {
         let selectedBody = mouseConstraint.body;
         if (selectedBody) {
           // turn left if we press q and right if we press e.
-          selectedBody.angle += event.keyCode == 101 ? 1 * Math.PI / 360 : -1 * Math.PI / 360;
+          selectedBody.angle +=
+            event.keyCode == 101
+              ? (0.1 * Math.PI) / 360
+              : (-0.1 * Math.PI) / 360;
         }
       }
-    }
-    window.addEventListener('keypress', rotateBody);
+    };
+    window.addEventListener("keypress", rotateBody);
 
     //add mouse
     Composite.add(engine.world, mouseConstraint);
     Render.run(render);
-    
+
     const runner = Runner.create();
     Runner.run(runner, engine);
 
     // change the width and height of our ref.
     const handleResize = () => {
       if (!render || !sceneRef.current) return;
-      
+
       const width = sceneRef.current.clientWidth;
       const height = sceneRef.current.clientHeight;
-      
+
       render.options.width = width;
       render.options.height = height;
       render.canvas.width = width;
       render.canvas.height = height;
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     // cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
-      render.canvas.removeEventListener('wheel', preventScroll);
-      render.canvas.removeEventListener('DOMMouseScroll', preventScroll);
+      window.removeEventListener("resize", handleResize);
+      render.canvas.removeEventListener("wheel", preventScroll);
+      render.canvas.removeEventListener("DOMMouseScroll", preventScroll);
       Render.stop(render);
       Runner.stop(runner);
       Engine.clear(engine);
@@ -183,16 +203,15 @@ export default function MatterScene() {
   return (
     <div>
       <div className="">
-        <div 
-          ref={sceneRef} 
+        <div
+          ref={sceneRef}
           className="w-full h-full absolute inset-0 overflow-hidden"
         />
-        
       </div>
-      <button className="bg-red-500 z-10 relative" onClick={findHighest}>Submit</button>
+      <button className="bg-red-500 z-10 relative" onClick={findHighest}>
+        Submit
+      </button>
       <p>{highestBody}</p>
     </div>
-
-    
   );
 }
