@@ -5,32 +5,87 @@ import * as Matter from "matter-js";
 import "pathseg";
 import svgPaths from "./svgpaths.json";
 
-export default function MatterScene() {
-  const sceneRef = useRef();
+export default function MatterScene({ word ="bd"}) {
+  const [dimensions, setDimensions] = useState({
+    width: 800,
+    height: 600
+  });
+
+  const sceneRef = useRef(null);
   const engineRef = useRef(null);
+  const renderRef = useRef(null);
+
   const [highestBody, setHighestBody] = useState(-1);
+  const [score, setScore] = useState(0);
   const bodiesRef = useRef([]);
 
+
   var decomp = require("poly-decomp");
+
 
   const findHighest = () => {
     if (!engineRef.current || bodiesRef.current.length === 0) return;
 
     const bodies = bodiesRef.current;
     bodies.forEach((body) => {
-      body.render.fillStyle = "white";
-      body.render.fillStyle = "white";
+      if (body.parts) {
+        // composite body - color all parts
+        body.parts.forEach(part => {
+          part.render.fillStyle = "white";
+          part.render.strokeStyle = "white";
+        });
+      } else {
+        // simple body
+        body.render.fillStyle = "white";
+        body.render.strokeStyle = "white";
+      }
     });
-    const highestBody = bodies.reduce((highest, body) => {
-      return body.position.y < highest.position.y ? body : highest;
-    }, bodies[0]);
 
-    console.log("Highest Body:", highestBody.position.y);
-    highestBody.render.fillStyle = "red";
-    highestBody.render.strokeStyle = "red";
-    console.log(highestBody);
-    setHighestBody(highestBody.position.y);
+
+    let highestBody = null;
+    let highestPointY = Infinity;
+
+    bodiesRef.current.forEach(body => {
+      // if body parts is length 1, don't slice. it's not composite.
+      // slice(1) to skip the parent in composite
+      const parts = body.parts && body.parts.length > 1 ? body.parts.slice(1) : [body]
+
+      parts.forEach(part => {
+        const topY = part.bounds.min.y;
+        if (topY < highestPointY) {
+          highestPointY = topY;
+          highestBody = body;
+        }
+      });
+    });
+
+
+    if (highestBody) {
+      if (highestBody.parts) {
+        highestBody.parts.forEach(part => {
+          part.render.fillStyle = "red";
+          part.render.strokeStyle = "red";
+        });
+      } else {
+        highestBody.render.fillStyle = "red";
+        highestBody.render.strokeStyle = "red";
+      }
+
+    };
+
+
+    setHighestBody(highestBody.position.y);    
+    getScore(highestBody.position.y);
   };
+
+  const getScore = (currentHighestY = null) => {
+    const sceneDimensions = getSceneDimensions();
+    const valueToUse = currentHighestY !== null ? currentHighestY : highestBody;
+    const calculatedScore = sceneDimensions.height / valueToUse * 100;
+    setScore(calculatedScore);
+    return calculatedScore;
+  }
+
 
   const makeBody = (svgPath, x, y) => {
     // create svg element given our path and the w3 api
@@ -60,14 +115,17 @@ export default function MatterScene() {
       true
     );
 
+    
+    const sceneDimensions = getSceneDimensions();
     //console.log(svgBody);
     //make it bigger!
-    Matter.Body.scale(svgBody, 3, 3);
+    Matter.Body.scale(svgBody, sceneDimensions.height * 0.0035, sceneDimensions.height * 0.0035);
     return svgBody;
   };
 
+  // handle the actual rendering setup
   useEffect(() => {
-    //very important, we need this to use decomp
+    // Very important, we need this to use decomp
     Matter.Common.setDecomp(decomp);
     if (!sceneRef.current) return;
 
@@ -86,20 +144,23 @@ export default function MatterScene() {
     });
 
     engineRef.current = engine;
+    const sceneDimensions = getSceneDimensions();
 
     // Our renderer. renders inside sceneRef.current.
     const render = Render.create({
       element: sceneRef.current,
       engine: engine,
       options: {
-        width: sceneRef.current.clientWidth,
-        height: sceneRef.current.clientHeight,
+        width: sceneDimensions.width,
+        height: sceneDimensions.height,
         wireframes: false,
         background: "transparent",
       },
     });
 
-    // method that returns an array of boundary walls
+    renderRef.current = render;
+
+    // Method that returns an array of boundary walls
     const createWalls = () => {
       const { width, height } = render.options;
       const wallThickness = 30;
@@ -117,23 +178,25 @@ export default function MatterScene() {
       ];
     };
 
-    // method that returns an array of bodies
+    // Method that returns an array of bodies
     const createBodies = () => {
-      const { width, height } = render.options;
-      return [
-        makeBody(svgPaths["s"], 10, 100),
-        makeBody(svgPaths["h"], 60, 100),
-        makeBody(svgPaths["i"], 110, 100),
-        makeBody(svgPaths["t"], 160, 100),
-      ];
+
+      const sceneDimensions = getSceneDimensions();
+      const { width, height } = sceneDimensions;
+      const margin = width * 0.05;
+      const gapWidth = width / word.length;
+
+      return word.toLowerCase().split('').map((letter, index) => {
+        return makeBody(svgPaths[letter], (index) * gapWidth + margin, height / 2);
+      });
     };
 
-    // add walls and bodies to world.
+    // Add walls and bodies to world.
     const bodies = createBodies();
     bodiesRef.current = bodies;
     Composite.add(engine.world, [...createWalls(), ...bodiesRef.current]);
 
-    // create a mouse and mouse constraint.
+    // Create a mouse and mouse constraint.
     const mouse = Mouse.create(render.canvas);
     const mouseConstraint = MouseConstraint.create(engine, {
       mouse: mouse,
@@ -143,8 +206,7 @@ export default function MatterScene() {
       },
     });
 
-    // method to prevent an event. use when wheel or domscroll occurs.
-    // passive : false indicates that the method may call event.preventDefault()
+    // Method to prevent an event. use when wheel or domscroll occurs.
     const preventScroll = (event) => event.preventDefault();
     render.canvas.addEventListener("wheel", preventScroll, { passive: false });
     render.canvas.addEventListener("DOMMouseScroll", preventScroll, {
@@ -152,11 +214,11 @@ export default function MatterScene() {
     });
 
     const rotateBody = (event) => {
-      // keys e and q, respectively.
+      // Keys e and q, respectively.
       if (event.keyCode == 101 || event.keyCode == 113) {
         let selectedBody = mouseConstraint.body;
         if (selectedBody) {
-          // turn left if we press q and right if we press e.
+          // Turn left if we press q and right if we press e.
           selectedBody.angle +=
             event.keyCode == 101
               ? (0.1 * Math.PI) / 360
@@ -166,31 +228,16 @@ export default function MatterScene() {
     };
     window.addEventListener("keypress", rotateBody);
 
-    //add mouse
+    // Add mouse
     Composite.add(engine.world, mouseConstraint);
     Render.run(render);
 
     const runner = Runner.create();
     Runner.run(runner, engine);
 
-    // change the width and height of our ref.
-    const handleResize = () => {
-      if (!render || !sceneRef.current) return;
-
-      const width = sceneRef.current.clientWidth;
-      const height = sceneRef.current.clientHeight;
-
-      render.options.width = width;
-      render.options.height = height;
-      render.canvas.width = width;
-      render.canvas.height = height;
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    // cleanup
+    // Cleanup
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("keypress", rotateBody);
       render.canvas.removeEventListener("wheel", preventScroll);
       render.canvas.removeEventListener("DOMMouseScroll", preventScroll);
       Render.stop(render);
@@ -198,20 +245,69 @@ export default function MatterScene() {
       Engine.clear(engine);
       render.canvas.remove();
     };
+  }, [dimensions]); // re-create the scene when dimensions change
+
+  // this effect handles window resizing
+  useEffect(() => {
+    // Update dimensions only on client-side
+    if (typeof window === 'undefined') return;
+
+    // Update dimensions on mount
+    setDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight
+    });
+
+    // Update dimensions on resize
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
+
+  const getSceneDimensions = () => {
+    const controlPanelHeight = dimensions.height * 0.2;
+    
+    return {
+      width: dimensions.width,
+      height: dimensions.height - controlPanelHeight
+    };
+  };
+
+  
+  const sceneDimensions = getSceneDimensions();
 
   return (
     <div>
       <div className="">
         <div
           ref={sceneRef}
+          style={{
+            width: `${sceneDimensions.width}px`,
+            height: `${sceneDimensions.height}px`,
+            position: 'relative'
+          }}
           className="w-full h-full absolute inset-0 overflow-hidden"
         />
       </div>
-      <button className="bg-red-500 z-10 relative" onClick={findHighest}>
-        Submit
-      </button>
-      <p>{highestBody}</p>
+      <div>
+        <button className="bg-red-500 z-10 relative" onClick={findHighest}>
+          Submit
+        </button>
+        <p>Your Score: {score}</p>
+
+        {sceneDimensions.height <= 400 && 
+        <p>This screen may be too short to play optimally.</p>
+        }
+      </div>
     </div>
   );
 }
