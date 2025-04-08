@@ -1,14 +1,27 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import * as Matter from "matter-js";
+import {
+  Engine,
+  Render,
+  Runner,
+  Bodies,
+  Composite,
+  Mouse,
+  MouseConstraint,
+  Events,
+  Common,
+  Svg,
+  Body,
+} from "matter-js";
+
 import "pathseg";
 import svgPaths from "./svgpaths.json";
 
-export default function MatterScene({ word ="bd"}) {
+export default function MatterScene({ word = "shit" }) {
   const [dimensions, setDimensions] = useState({
     width: 800,
-    height: 600
+    height: 600,
   });
 
   const sceneRef = useRef(null);
@@ -19,9 +32,7 @@ export default function MatterScene({ word ="bd"}) {
   const [score, setScore] = useState(0);
   const bodiesRef = useRef([]);
 
-
   var decomp = require("poly-decomp");
-
 
   const findHighest = () => {
     if (!engineRef.current || bodiesRef.current.length === 0) return;
@@ -30,7 +41,7 @@ export default function MatterScene({ word ="bd"}) {
     bodies.forEach((body) => {
       if (body.parts) {
         // composite body - color all parts
-        body.parts.forEach(part => {
+        body.parts.forEach((part) => {
           part.render.fillStyle = "white";
           part.render.strokeStyle = "white";
         });
@@ -41,16 +52,16 @@ export default function MatterScene({ word ="bd"}) {
       }
     });
 
-
     let highestBody = null;
     let highestPointY = Infinity;
 
-    bodiesRef.current.forEach(body => {
+    bodiesRef.current.forEach((body) => {
       // if body parts is length 1, don't slice. it's not composite.
       // slice(1) to skip the parent in composite
-      const parts = body.parts && body.parts.length > 1 ? body.parts.slice(1) : [body]
+      const parts =
+        body.parts && body.parts.length > 1 ? body.parts.slice(1) : [body];
 
-      parts.forEach(part => {
+      parts.forEach((part) => {
         const topY = part.bounds.min.y;
         if (topY < highestPointY) {
           highestPointY = topY;
@@ -59,10 +70,9 @@ export default function MatterScene({ word ="bd"}) {
       });
     });
 
-
     if (highestBody) {
       if (highestBody.parts) {
-        highestBody.parts.forEach(part => {
+        highestBody.parts.forEach((part) => {
           part.render.fillStyle = "red";
           part.render.strokeStyle = "red";
         });
@@ -70,22 +80,21 @@ export default function MatterScene({ word ="bd"}) {
         highestBody.render.fillStyle = "red";
         highestBody.render.strokeStyle = "red";
       }
+    }
 
-    };
-
-
-    setHighestBody(highestBody.position.y);    
+    setHighestBody(highestBody.position.y);
     getScore(highestBody.position.y);
   };
 
   const getScore = (currentHighestY = null) => {
     const sceneDimensions = getSceneDimensions();
     const valueToUse = currentHighestY !== null ? currentHighestY : highestBody;
-    const calculatedScore = sceneDimensions.height / valueToUse * 100;
+    var calculatedScore = (sceneDimensions.height / valueToUse) * 100;
+    //subtract the base letter height.
+    calculatedScore = Math.max(0, calculatedScore - 120);
     setScore(calculatedScore);
     return calculatedScore;
-  }
-
+  };
 
   const makeBody = (svgPath, x, y) => {
     // create svg element given our path and the w3 api
@@ -94,14 +103,14 @@ export default function MatterScene({ word ="bd"}) {
       "path"
     );
     pathEl.setAttribute("d", svgPath);
-    const vertices = Matter.Svg.pathToVertices(pathEl, 1); //convert path with given precision
+    const vertices = Svg.pathToVertices(pathEl, 1); //convert path with given precision
 
     //const { width, height } = 100;
 
     //console.log(vertices);
 
     //create body. should use poly-decomp and pathseg!
-    const svgBody = Matter.Bodies.fromVertices(
+    const svgBody = Bodies.fromVertices(
       x,
       y,
       vertices,
@@ -115,29 +124,22 @@ export default function MatterScene({ word ="bd"}) {
       true
     );
 
-    
     const sceneDimensions = getSceneDimensions();
     //console.log(svgBody);
     //make it bigger!
-    Matter.Body.scale(svgBody, sceneDimensions.height * 0.0035, sceneDimensions.height * 0.0035);
+    Body.scale(
+      svgBody,
+      sceneDimensions.height * 0.0035,
+      sceneDimensions.height * 0.0035
+    );
     return svgBody;
   };
 
   // handle the actual rendering setup
   useEffect(() => {
     // Very important, we need this to use decomp
-    Matter.Common.setDecomp(decomp);
+    Common.setDecomp(decomp);
     if (!sceneRef.current) return;
-
-    const {
-      Engine,
-      Render,
-      Runner,
-      Bodies,
-      Composite,
-      Mouse,
-      MouseConstraint,
-    } = Matter;
 
     const engine = Engine.create({
       gravity: { x: 0, y: 1 },
@@ -180,15 +182,21 @@ export default function MatterScene({ word ="bd"}) {
 
     // Method that returns an array of bodies
     const createBodies = () => {
-
       const sceneDimensions = getSceneDimensions();
       const { width, height } = sceneDimensions;
       const margin = width * 0.05;
       const gapWidth = width / word.length;
 
-      return word.toLowerCase().split('').map((letter, index) => {
-        return makeBody(svgPaths[letter], (index) * gapWidth + margin, height / 2);
-      });
+      return word
+        .toLowerCase()
+        .split("")
+        .map((letter, index) => {
+          return makeBody(
+            svgPaths[letter],
+            index * gapWidth + margin,
+            height / 2
+          );
+        });
     };
 
     // Add walls and bodies to world.
@@ -213,20 +221,20 @@ export default function MatterScene({ word ="bd"}) {
       passive: false,
     });
 
-    const rotateBody = (event) => {
-      // Keys e and q, respectively.
-      if (event.keyCode == 101 || event.keyCode == 113) {
-        let selectedBody = mouseConstraint.body;
-        if (selectedBody) {
-          // Turn left if we press q and right if we press e.
-          selectedBody.angle +=
-            event.keyCode == 101
-              ? (0.1 * Math.PI) / 360
-              : (-0.1 * Math.PI) / 360;
-        }
-      }
+    let rotating = { left: false, right: false };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "q") rotating.left = true;
+      if (event.key === "e") rotating.right = true;
     };
-    window.addEventListener("keypress", rotateBody);
+
+    const handleKeyUp = (event) => {
+      if (event.key === "q") rotating.left = false;
+      if (event.key === "e") rotating.right = false;
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
     // Add mouse
     Composite.add(engine.world, mouseConstraint);
@@ -234,10 +242,26 @@ export default function MatterScene({ word ="bd"}) {
 
     const runner = Runner.create();
     Runner.run(runner, engine);
+    Events.on(engine, "afterUpdate", () => {
+      findHighest();
+
+      const selectedBody = mouseConstraint.body;
+      if (selectedBody) {
+        if (rotating.left) {
+          selectedBody.torque = -0.1;
+        } else if (rotating.right) {
+          selectedBody.torque = 0.1;
+        } else {
+          Body.setStatic(selectedBody, true);
+          Body.setStatic(selectedBody, false);
+        }
+      }
+    });
 
     // Cleanup
     return () => {
-      window.removeEventListener("keypress", rotateBody);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
       render.canvas.removeEventListener("wheel", preventScroll);
       render.canvas.removeEventListener("DOMMouseScroll", preventScroll);
       Render.stop(render);
@@ -250,19 +274,19 @@ export default function MatterScene({ word ="bd"}) {
   // this effect handles window resizing
   useEffect(() => {
     // Update dimensions only on client-side
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     // Update dimensions on mount
     setDimensions({
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
     });
 
     // Update dimensions on resize
     const handleResize = () => {
       setDimensions({
         width: window.innerWidth,
-        height: window.innerHeight
+        height: window.innerHeight,
       });
     };
 
@@ -275,14 +299,13 @@ export default function MatterScene({ word ="bd"}) {
 
   const getSceneDimensions = () => {
     const controlPanelHeight = dimensions.height * 0.2;
-    
+
     return {
       width: dimensions.width,
-      height: dimensions.height - controlPanelHeight
+      height: dimensions.height - controlPanelHeight,
     };
   };
 
-  
   const sceneDimensions = getSceneDimensions();
 
   return (
@@ -293,7 +316,7 @@ export default function MatterScene({ word ="bd"}) {
           style={{
             width: `${sceneDimensions.width}px`,
             height: `${sceneDimensions.height}px`,
-            position: 'relative'
+            position: "relative",
           }}
           className="w-full h-full absolute inset-0 overflow-hidden"
         />
@@ -302,11 +325,11 @@ export default function MatterScene({ word ="bd"}) {
         <button className="bg-red-500 z-10 relative" onClick={findHighest}>
           Submit
         </button>
-        <p>Your Score: {score}</p>
+        <p>Your Score: {score.toFixed(0)}</p>
 
-        {sceneDimensions.height <= 400 && 
-        <p>This screen may be too short to play optimally.</p>
-        }
+        {sceneDimensions.height <= 400 && (
+          <p>This screen may be too short to play optimally.</p>
+        )}
       </div>
     </div>
   );

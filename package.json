@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "firebase": "^11.6.0",
     "matter-js": "^0.20.0",
     "next": "15.2.4",
     "pathseg": "^1.2.1",
