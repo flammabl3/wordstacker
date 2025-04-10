@@ -125,17 +125,22 @@ export default function MatterScene({ word = "default" }) {
       y,
       vertices,
       {
-        render: {
-          strokeStyle: 
-            `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`,
-          lineWidth: 2,
-        },
         collisionFilter: {
           category: 0x0001 // Will be selectable by mouse
         }
       },
       true
     );
+
+    
+    if (svgBody.parts && svgBody.parts.length > 1) {
+      // Skip index 0 as it's the parent body
+      for (let i = 1; i < svgBody.parts.length; i++) {
+        svgBody.parts[i].render.fillStyle = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+        svgBody.parts[i].render.strokeStyle = 'black';
+        svgBody.parts[i].render.lineWidth = 2;
+      }
+    }
 
     const sceneDimensions = getSceneDimensions();
     //make it bigger!
@@ -211,8 +216,7 @@ export default function MatterScene({ word = "default" }) {
           return makeBody(
             svgPaths[letter],
             index * gapWidth + margin,
-            height / 2,
-            `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`
+            height / 2
           );
         });
     };

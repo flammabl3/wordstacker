@@ -26,6 +26,13 @@ export default function MatterHeader() {
     height: 600,
   });
 
+  const colors = [
+    "#f1f6f9",
+    "#c89933",
+    "#6b9080",
+    "#8c86aa",
+  ]
+
   const sceneRef = useRef(null);
   const engineRef = useRef(null);
   const renderRef = useRef(null);
@@ -52,17 +59,21 @@ export default function MatterHeader() {
       y,
       vertices,
       {
-        render: {
-          strokeStyle: 
-            `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`,
-          lineWidth: 2,
-        },
         collisionFilter: {
           category: 0x0001 // Will be selectable by mouse
         }
       },
       true
     );
+
+    if (svgBody.parts && svgBody.parts.length > 1) {
+      // skip index 0 as it's the parent body
+      for (let i = 1; i < svgBody.parts.length; i++) {
+        svgBody.parts[i].render.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+        svgBody.parts[i].render.strokeStyle = 'black';
+        svgBody.parts[i].render.lineWidth = 2;
+      }
+    }
 
     const sceneDimensions = getSceneDimensions();
     //make it bigger!
@@ -138,8 +149,7 @@ export default function MatterHeader() {
           return makeBody(
             svgPaths[letter],
             index * gapWidth + margin,
-            height / 2,
-            `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`
+            height / 2
           );
         });
     };
@@ -224,9 +234,7 @@ export default function MatterHeader() {
         style={{
           width: `${sceneDimensions.width}px`,
           height: `${sceneDimensions.height}px`,
-          position: "absolute",
-          left: "25%",
-          top: "0%",
+          position: "relative",
         }}
         className="absolute inset-0 overflow-hidden"
       />
