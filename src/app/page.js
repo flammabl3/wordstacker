@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getItems } from "../../_services/scores-service";
+import MatterHeader from "../../components/matter-header";
 
 export default function HomePage() {
   const router = useRouter();
@@ -15,21 +15,26 @@ export default function HomePage() {
   };
 
   return (
-    <div>
-      <h1>Word Stack</h1>
-      <input
-        type="text"
-        value={wordInput}
-        onChange={(e) => setWordInput(e.target.value)}
-        placeholder="Enter a word"
-      />
-      <button onClick={navigateToWord} className="bg-red-500">
+    <div className="flex flex-col items-center justify-center h-screen font-serif">
+      <div>
+        <MatterHeader />
+        <h1 className="text-7xl">Word Stacker</h1>
+        <input
+          type="text"
+          value={wordInput}
+          onChange={(e) => e.target.value === "" ? alert("Please enter a word.") : setWordInput(e.target.value)}
+          placeholder="Enter a word"
+          className="border border-cool-grey-300 rounded-md p-2 m-1"
+        />
+        <button onClick={navigateToWord} className="font-serif bg-cool-grey-700 p-2 m-1 rounded-md">
         Go
+        </button>
+      </div>
+      
+      <button className="font-serif bg-cool-grey-700 p-2 rounded-md">Daily Word</button>
+      <button onClick={() => router.push("/scores")} className="font-serif bg-cool-grey-700 p-2 m-1 rounded-md">
+        See Scores
       </button>
-      <button onClick={getItems} className="bg-red-500">
-        Test
-      </button>
-      <button className="bg-red-500">Daily Word</button>
     </div>
   );
 }

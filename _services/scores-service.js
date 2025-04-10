@@ -1,8 +1,8 @@
 import { db } from "../_utils/firebase";
 import { collection, getDocs, addDoc, query } from "firebase/firestore";
 
-export async function getItems(userId) {
-  const collectionRef = collection(db, "scores");
+export async function getItems(date) {
+  const collectionRef = collection(db, "scores", date, "users");
   const docsRef = await getDocs(collectionRef);
 
   console.log("Raw docsRef:", docsRef);

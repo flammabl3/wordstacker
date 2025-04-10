@@ -1,26 +1,78 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-pt-serif);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #29414A;
+    --foreground: #F1F6F9;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+@theme {
+  /* Charcoal base: #264653 */
+  --color-charcoal-100: #D8DFE2;
+  --color-charcoal-200: #B2BFC5;
+  --color-charcoal-300: #8B9FA7;
+  --color-charcoal-400: #647F8A;
+  --color-charcoal-500: #3D5F6D;
+  --color-charcoal-600: #33505C;
+  --color-charcoal-700: #29414A;
+  --color-charcoal-800: #264653; /* Original color */
+  --color-charcoal-900: #152127;
+
+  /* Anti-Flash White base: #F1F6F9 */
+  --color-anti-flash-white-100: #FFFFFF;
+  --color-anti-flash-white-200: #FCFDFE;
+  --color-anti-flash-white-300: #F9FBFD;
+  --color-anti-flash-white-400: #F6F9FB;
+  --color-anti-flash-white-500: #F1F6F9; /* Original color */
+  --color-anti-flash-white-600: #D1DEE5;
+  --color-anti-flash-white-700: #B1C6D1;
+  --color-anti-flash-white-800: #91AFBD;
+  --color-anti-flash-white-900: #7197A9;
+
+  /* Cool Grey base: #8C86AA */
+  --color-cool-grey-100: #EEEDFA;
+  --color-cool-grey-200: #DDDAF0;
+  --color-cool-grey-300: #CBC8E7;
+  --color-cool-grey-400: #B9B5DD;
+  --color-cool-grey-500: #8C86AA; /* Original color */
+  --color-cool-grey-600: #736D8E;
+  --color-cool-grey-700: #5A5572;
+  --color-cool-grey-800: #423C55;
+  --color-cool-grey-900: #292339;
+
+  /* Satin Sheen Gold base: #C89933 */
+  --color-satin-sheen-gold-100: #FAF0DB;
+  --color-satin-sheen-gold-200: #F5E1B7;
+  --color-satin-sheen-gold-300: #EFD294;
+  --color-satin-sheen-gold-400: #EAC370;
+  --color-satin-sheen-gold-500: #C89933; /* Original color */
+  --color-satin-sheen-gold-600: #A67E2B;
+  --color-satin-sheen-gold-700: #846423;
+  --color-satin-sheen-gold-800: #624A1A;
+  --color-satin-sheen-gold-900: #403012;
+
+  /* Viridian base: #6B9080 */
+  --color-viridian-100: #E5EDEA;
+  --color-viridian-200: #CCDBD5;
+  --color-viridian-300: #B2C9BF;
+  --color-viridian-400: #99B7AA;
+  --color-viridian-500: #6B9080; /* Original color */
+  --color-viridian-600: #59786A;
+  --color-viridian-700: #466055;
+  --color-viridian-800: #34483F;
+  --color-viridian-900: #23302A;
 }
