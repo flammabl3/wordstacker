@@ -1,5 +1,5 @@
 import { db } from "../_utils/firebase";
-import { collection, doc, setDoc, getDocs, addDoc, query } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, getDoc, addDoc, query } from "firebase/firestore";
 
 export async function getItems(date) {
   const collectionRef = collection(db, "scores", date, "users");
@@ -16,6 +16,17 @@ export async function getItems(date) {
   else return [];
 }
 
+export async function dateDocExists(date) { 
+  const docRef = doc(db, "scores", date); 
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
 export async function addScore(date, item) {
   // generate a new user score with a random id 
   const collectionRef = collection(db, "scores", date, "users");
@@ -29,8 +40,10 @@ export async function addDay(date, word) {
 
   await setDoc(docRef, {
     daily_word: word,
-    users: {} 
   });
+
+  const usersCollection = collection(db, "scores", date, "users");
+  await addDoc(usersCollection, {});
 
   return docRef.id;
 }

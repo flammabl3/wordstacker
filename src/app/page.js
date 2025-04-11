@@ -2,7 +2,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import MatterHeader from "../../components/matter-header";
-import {addDay} from "../../_services/scores-service";
 
 export default function HomePage() {
   const router = useRouter();
@@ -50,11 +49,6 @@ export default function HomePage() {
           </button>
         </div>
 
-        <div className="w-full flex flex-row items-center justify-center h-full m-1">        
-          <button onClick={async () => {await test()}} className="font-serif text-3xl bg-viridian-700 p-2 m-4 rounded-md h-6/10 w-9/10 cursor-pointer hover:bg-viridian-800 transition duration-300 shadow-md">
-            See test
-          </button>
-        </div>
       </div>
     </div>
   );

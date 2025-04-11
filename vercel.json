@@ -1,7 +1,8 @@
 {
-    "functions": {
-      "api/generate-daily.js": {
-        "schedule": "0 0 * * *"
-      }
-    }
+    "crons": [
+        {
+            "path" : "/api/generate-daily.js",
+            "schedule": "0 0 * * *"
+        }
+    ]
 }
