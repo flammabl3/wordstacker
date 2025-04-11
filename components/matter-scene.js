@@ -21,6 +21,7 @@ import svgPaths from "./svgpaths.json";
 
 export default function MatterScene({ word = "default" }) {
   word = word.toLowerCase().replace(/[^a-z]/g, "");
+  word = word.substring(0, 9);
   const [dimensions, setDimensions] = useState({
     width: 800,
     height: 600,

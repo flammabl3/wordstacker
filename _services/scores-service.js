@@ -1,5 +1,5 @@
 import { db } from "../_utils/firebase";
-import { collection, getDocs, addDoc, query } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, addDoc, query } from "firebase/firestore";
 
 export async function getItems(date) {
   const collectionRef = collection(db, "scores", date, "users");
@@ -16,9 +16,21 @@ export async function getItems(date) {
   else return [];
 }
 
-export async function addItem(date, item) {
+export async function addScore(date, item) {
+  // generate a new user score with a random id 
   const collectionRef = collection(db, "scores", date, "users");
   const docRef = await addDoc(collectionRef, item);
+
+  return docRef.id;
+}
+
+export async function addDay(date, word) {
+  const docRef = doc(db, "scores", date); // sets the document ID to the date
+
+  await setDoc(docRef, {
+    daily_word: word,
+    users: {} 
+  });
 
   return docRef.id;
 }

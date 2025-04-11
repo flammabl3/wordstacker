@@ -1,0 +1,7 @@
+{
+    "functions": {
+      "api/generate-daily.js": {
+        "schedule": "0 0 * * *"
+      }
+    }
+}
