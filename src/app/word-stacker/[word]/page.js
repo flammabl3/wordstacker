@@ -5,5 +5,5 @@ import { use } from "react";
 export default function WordStackPage({ params }) {
   const { word } = use(params);
 
-  return <MatterScene word={word} />;
+  return <MatterScene word={word} dailyWord={false}/>;
 }

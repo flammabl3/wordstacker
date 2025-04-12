@@ -27,7 +27,21 @@ export async function dateDocExists(date) {
   }
 }
 
-export async function addScore(date, item) {
+export async function getDailyWord() {
+  const date = new Date().toISOString().split("T")[0].split("-").reverse().join(".")
+  const docRef = doc(db, "scores", date);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    return docSnap.data().daily_word;
+  } else {
+    return null;
+  }
+}
+
+export async function addScore(item) {
+  
+  const date = new Date().toISOString().split("T")[0].split("-").reverse().join(".")
   // generate a new user score with a random id 
   const collectionRef = collection(db, "scores", date, "users");
   const docRef = await addDoc(collectionRef, item);

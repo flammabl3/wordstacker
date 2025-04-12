@@ -1,16 +1,38 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MatterHeader from "../../components/matter-header";
+import { getDailyWord } from "../../_services/scores-service";
 
 export default function HomePage() {
   const router = useRouter();
   const [wordInput, setWordInput] = useState("");
   const [errorMessage, setErrorMessage] = useState(null);
 
+  const [dailyWord, setDailyWord] = useState(null);
+  const [loading, setLoading] = useState(true); 
+
+  useEffect(() => {
+    const fetchDailyWord = async () => {
+      try {
+        const date = new Date().toISOString().split("T")[0].split("-").reverse().join(".");
+        const word = await getDailyWord(date);
+        if (word) {
+          setDailyWord(word);
+          setLoading(false);
+        }
+      } catch {
+        console.error("Error fetching daily word:", error);
+        setErrorMessage("Error fetching daily word. Please try again later.");
+      }
+    };
+    
+    fetchDailyWord();
+  }, []);
+
   const navigateToWord = (e) => {
     e.preventDefault();
-    const word = wordInput.trim().toLowerCase();
+    const word = wordInput.trim().toLowerCase().substring(0, 10);
     if (word.length > 10) {
       setErrorMessage("Word is too long. Please enter a word with 10 characters or less.");
     } else if (word === "") {
@@ -20,6 +42,14 @@ export default function HomePage() {
       router.push(`/word-stacker/${wordInput}`);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-viridian-700"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-start h-screen font-serif">
@@ -41,7 +71,7 @@ export default function HomePage() {
           </button>
         </div>
         <div className="w-full flex flex-row items-center justify-center h-full m-1">        
-          <button className="font-serif text-3xl bg-viridian-700 p-2 m-4 rounded-md h-6/10 w-9/10 cursor-pointer hover:bg-viridian-800 transition duration-300 shadow-md">Daily Word</button>
+          <button onClick={() => router.push(`/word-stacker/daily-word`)} className="font-serif text-3xl bg-viridian-700 p-2 m-4 rounded-md h-6/10 w-9/10 cursor-pointer hover:bg-viridian-800 transition duration-300 shadow-md">Daily Word: {dailyWord && dailyWord}</button>
         </div>
         <div className="w-full flex flex-row items-center justify-center h-full m-1">        
           <button onClick={() => router.push("/scores")} className="font-serif text-3xl bg-viridian-700 p-2 m-4 rounded-md h-6/10 w-9/10 cursor-pointer hover:bg-viridian-800 transition duration-300 shadow-md">

@@ -7,9 +7,9 @@ export default function HomePage() {
   const [scoreInput, setScoreInput] = useState(() => {
     const date = new Date();
     return {
-        day: date.getDate() < 10 ? "0" + date.getDate() : date.getDate(),
-        month: date.getMonth() + 1 < 10 ? "0" + (date.getMonth() + 1) : (date.getMonth() + 1),
-        year: date.getFullYear(),
+        day: date.getDate() < 10 ? "0" + date.getUTCDate() : date.getUTCDate(),
+        month: date.getMonth() + 1 < 10 ? "0" + (date.getUTCMonth() + 1) : (date.getUTCMonth() + 1),
+        year: date.getUTCFullYear(),
       }
     });
 
@@ -24,7 +24,7 @@ export default function HomePage() {
     setScoresList(scores);
   };
 
-  const [scoresList, setScoresList] = useState([]);
+  const [scoresList, setScoresList] = useState(null);
 
   const days = [
     { value: "01", label: "01" },
@@ -75,9 +75,26 @@ export default function HomePage() {
     { value: "12", label: "12" },
   ]
 
+  const formatDate = (date, useUTC = false) => {
+    const day = useUTC ? date.getUTCDate() : date.getDate();
+    const month = useUTC ? date.getUTCMonth() + 1 : date.getMonth() + 1; // Months are 0-indexed
+    const year = useUTC ? date.getUTCFullYear() : date.getFullYear();
+  
+    const hours = useUTC ? date.getUTCHours() : date.getHours();
+    const minutes = useUTC ? date.getUTCMinutes() : date.getMinutes();
+  
+    // Format as DD/MM/YYYY HH:MM:SS
+    return `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year} ${hours
+      .toString()
+      .padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-        <div>
+    <div className="flex flex-col items-center justify-start h-screen mt-4">
+        <div className="flex flex-col items-center justify-center w-1/2">
+            <h2>This game uses UTC time.</h2>
+            <h3>Your time: {formatDate(new Date())}</h3>
+            <h3>UTC time: {formatDate(new Date(), true)}</h3>
             <div>
                 <select
                     value={scoreInput.day}
@@ -85,7 +102,7 @@ export default function HomePage() {
                         ...scoreInput,
                         day: e.target.value,
                     })}
-                    className="border border-gray-300 text-red-900 rounded-md p-2"
+                    className="border border-anti-flash-white-500 bg-charcoal-700 text-anti-flash-white-500 rounded-md p-4 m-2 text-2xl"
                 >
                     {days.map((day) => (
                     <option key={day.value} value={day.value}>
@@ -100,7 +117,7 @@ export default function HomePage() {
                     ...scoreInput,
                     month: e.target.value,
                 })}
-                className="border border-gray-300 text-red-900 rounded-md p-2"
+                className="border border-anti-flash-white-500 bg-charcoal-700 text-anti-flash-white-500 rounded-md p-4 m-2 text-2xl"
             >
                 {months.map((month) => (
                 <option key={month.value} value={month.value}>
@@ -117,25 +134,33 @@ export default function HomePage() {
                     year: e.target.value,
                 })}
                 placeholder="Year"
-                className="border border-gray-300 text-red-900 rounded-md p-2 w-20"
+                className="border border-anti-flash-white-500 text-anti-flash-white-500 bg-charcoal-700 rounded-md p-4 m-2 text-2xl"
             />
 
             
             </div>
             <button onClick={fetchScores} 
-            className="bg-red-500 text-white px-4 py-2 rounded-md cursor-pointer hover:bg-red-600 transition duration-300 shadow-md">
+            className="bg-viridian-600 text-anti-flash-white-500 px-4 py-2 rounded-md cursor-pointer hover:bg-viridian-700 transition duration-300 shadow-md text-2xl">
             See Scores
             </button>
         </div>
-        <div>
+        
+        <div className="w-1/2 flex-1 flex-col items-center justify-start m-4">
+        { scoresList && scoresList.length > 0 && 
             <ol>
                 {scoresList.map((item) => (
-                    <li key={item.id} className="text-red-900 border-b border-gray-300 py-2">
-                        <h2>{item.user_name} {item.score}</h2>
+                    <li key={item.id} className="text-flash-white-500 border-b border-t border-anti-flash-white-500 p-4 w-full">
+                        <h2 className="text-lg font-bold">{item.name}</h2>
+                        <p>Score: {item.score}</p>
                         <p>Word: {item.word}</p>
+                        <p>Daily Word: {item.wordOfTheDay == true ? "Yes" : "No"}</p>
                     </li>
                 ))}
             </ol>
+        }
+        { scoresList && scoresList.length === 0 && 
+            <h2 className="text-anti-flash-white-500 text-center p-4 m-4">No scores found for this date.</h2>
+        }
         </div>
     </div>
   );

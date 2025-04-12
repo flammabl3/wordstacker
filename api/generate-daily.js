@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 
 export default async function handler(req, res) {
-    const today = new Date().toLocaleDateString("en-GB").split("/").join(".");
+    const today = new Date().toISOString().split("T")[0].split("-").reverse().join(".");
 
     const exists = await dateDocExists(today);
 

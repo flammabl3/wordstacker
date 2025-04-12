@@ -19,7 +19,11 @@ import {
 import "pathseg";
 import svgPaths from "./svgpaths.json";
 
-export default function MatterScene({ word = "default" }) {
+import { useRouter } from "next/navigation";
+
+import { addScore } from "../_services/scores-service";
+
+export default function MatterScene({ word = "default", dailyWord=false }) {
   word = word.toLowerCase().replace(/[^a-z]/g, "");
   word = word.substring(0, 9);
   const [dimensions, setDimensions] = useState({
@@ -37,6 +41,17 @@ export default function MatterScene({ word = "default" }) {
   const [isCheckingStability, setIsCheckingStability] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
   const [scoreValid, setScoreValid] = useState(null);
+  const [submit, setSubmit] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const router = useRouter();
+
+  const [playerInfo, setPlayerInfo] = useState({
+    name: "",
+    score: null,
+    word: word,
+    wordOfTheDay: dailyWord
+  });
   
   // Use refs to track the stability checking process
   const stabilityCheckRef = useRef({
@@ -295,9 +310,9 @@ export default function MatterScene({ word = "default" }) {
           // Update UI
           setIsCheckingStability(false);
           setScoreValid(isValid);
-          if (isValid)
-            setFinalScore(currentScore);
-          
+          if (isValid) {
+            setFinalScore(currentScore);        
+          }
           // Log results
           console.log(`Initial score: ${stabilityCheck.initialScore.toFixed(1)}`);
           console.log(`Max score difference: ${stabilityCheck.maxDifference.toFixed(1)}, Is valid: ${isValid}`);
@@ -402,6 +417,54 @@ export default function MatterScene({ word = "default" }) {
 
   const sceneDimensions = getSceneDimensions();
 
+  const handleScoreSubmission = async () => {
+    await addScore(playerInfo);
+  }
+
+  const promptScore = () => {
+    if (!isModalOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-charcoal-900 text-anti-flash-white-300 p-6 rounded-lg shadow-lg w-1/3">
+          <h2 className="text-2xl font-bold mb-4">Submit Your Score</h2>
+          <p>Your final score is: {finalScore?.toFixed(0)}</p>
+          <p className="mb-4">Daily Word: {dailyWord ? "Yes" : "No"}</p>
+          <input
+                type="string"
+                value={playerInfo.name}
+                onChange={(e) =>     setPlayerInfo({
+                    ...playerInfo,
+                    score: Math.round(finalScore),
+                    name: e.target.value.trim().replace(/[^A-z a-z]/g, "").substring(0,10),
+                })}
+                placeholder="Enter your name"
+                className="border border-anti-flash-white-500 text-anti-flash-white-500 bg-charcoal-700 rounded-md p-4 m-2 text-2xl"
+            />
+          <div className="flex justify-end">
+            <button
+              className={submit ? 'bg-satin-sheen-gold-700' : 'bg-viridian-700'  +  " text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-viridian-800 transition duration-300 shadow-md mx-2"}
+              onClick={async () => {
+                console.log("Score submitted:", finalScore);
+                await handleScoreSubmission();
+                setIsModalOpen(false);
+                router.push("/")
+              }}
+            >
+              Submit
+            </button>
+            <button
+              className="bg-satin-sheen-gold-700 text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md mx-2"
+              onClick={() => setIsModalOpen(false)} 
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {sceneDimensions.height > 400 &&
@@ -419,19 +482,31 @@ export default function MatterScene({ word = "default" }) {
         </div>
         
         <div className="m-4 p-4 bg-charcoal-900 text-anti-flash-white-300 rounded-lg shadow-lg">
-          <button 
-            className={`${isCheckingStability ? 'bg-satin-sheen-gold-700' : 'bg-cool-grey-700'} text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md`} 
-            onClick={checkScore} 
-            disabled={isCheckingStability}
-          >
-            {isCheckingStability ? 'Checking stability...' : 'Check Score'}
-          </button>
+          <div className="flex flex-row">
+            <button 
+              className="bg-cool-grey-700 text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md mx-2"
+              onClick={checkScore} 
+              disabled={isCheckingStability}
+            >
+              {isCheckingStability ? 'Checking stability...' : 'Check Score'}
+            </button>
+            {finalScore &&
+            <button 
+              className={`${isCheckingStability ? 'bg-satin-sheen-gold-700' : 'bg-cool-grey-700'} text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md mx-2`} 
+              onClick={() => setIsModalOpen(true)} 
+              disabled={isCheckingStability}
+            >
+              Submit Score!
+            </button>
+            }
+          </div>
           
           <div className="mt-2">
-            <p className="text-anti-flash-white-300">Current Score: {score.toFixed(0)}</p>
+            <p className="text-anti-flash-white-300">Current Score: {score.toFixed(0)}
             {finalScore &&
-            <p className="text-anti-flash-white-300">Highest Score: {finalScore.toFixed(0)}</p>
+              " | Highest Score: " + finalScore.toFixed(0)
             }
+            </p>
             
             {scoreValid === true && (
               <p className="text-viridian-300 font-bold mt-2">
@@ -453,6 +528,7 @@ export default function MatterScene({ word = "default" }) {
         <p>This screen may be too short to play optimally.</p>
       </div>
       )}
+      {promptScore()} 
     </div>
   );
 }
