@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import {
   Engine,
   Render,
@@ -16,14 +16,27 @@ import {
   Collision
 } from "matter-js";
 
+import seedrandom from "seedrandom";
+
 import "pathseg";
 import svgPaths from "./svgpaths.json";
 
 import { useRouter } from "next/navigation";
 
-import { addScore } from "../_services/scores-service";
+import { addScore, getItems } from "../_services/scores-service";
 
 export default function MatterScene({ word = "default", dailyWord=false }) {
+  const hashWordToSeed = (word) => {
+    let hash = 0;
+    for (let i = 0; i < word.length; i++) {
+      hash = (hash << 5) - hash + word.charCodeAt(i);
+      hash |= 0; // convert to 32-bit integer
+    }
+    return hash.toString(); // convert to string for seedrandom
+  };
+
+  const rng = seedrandom(dailyWord ? hashWordToSeed(word) : (Math.random()*10000).toString());
+
   word = word.toLowerCase().replace(/[^a-z]/g, "");
   word = word.substring(0, 9);
   const [dimensions, setDimensions] = useState({
@@ -43,6 +56,9 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
   const [scoreValid, setScoreValid] = useState(null);
   const [submit, setSubmit] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
+
+  const [highscore, setHighscore] = useState();
 
   const router = useRouter();
 
@@ -65,6 +81,22 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
   const bodiesRef = useRef([]);
 
   var decomp = require("poly-decomp");
+
+
+  useEffect(() => {
+
+    const getHighscore = async () => {
+      const date = new Date().toISOString().split("T")[0].split("-").reverse().join(".");
+      const scores = await getItems(date);
+      const highestScore = scores
+      .filter((item) => item.word === word) // include only scores for the current word
+      .reduce((max, item) => Math.max(max, item.score), 0);
+      setHighscore(highestScore);
+    }
+
+    getHighscore();
+  
+  }, []);
 
   const findHighest = () => {
     if (!engineRef.current || bodiesRef.current.length === 0) return;
@@ -127,6 +159,65 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
   };
 
   const makeBody = (svgPath, x, y) => {
+    const bodyVariants = [
+      "normal",
+      "bouncy",
+      "icy",
+      "heavy",
+      "sticky",
+      "light"
+    ]
+
+    const bodyProperties = {
+      normal: {
+        restitution: 0.2,
+        friction: 0.5,
+        density: 1,
+      },
+      bouncy: {
+        restitution: 1,
+        friction: 1,
+        density: 1,
+      },
+      icy: {
+        restitution: 0.05,
+        friction: 0.1,
+        density: 1,
+        opacity: 0.3,
+      },
+      heavy: {
+        restitution: 0.01,
+        friction: 0.7,
+        density: 10,
+      },
+      sticky: {
+        restitution: 0.2,
+        friction: 10,
+        density: 1,
+        opacity: 0.6,
+      },
+      light: {
+        restitution: 0.2,
+        friction: 0.5,
+        density: 0.01,
+        opacity: 0.3,
+      },
+    };
+
+    const bodyColors = {
+      normal: ["#FCFDFE","#F9FBFD", "#F6F9FB", "#F1F6F9"],
+      bouncy: ["rgb(201, 121, 201)", "rgb(233, 105, 233)", "rgb(172, 82, 172))", "rgb(172, 93, 172)"],
+      icy: ["rgb(0, 255, 255)", "rgb(30, 209, 209)", "rgb(70, 230, 230)", "rgb(60, 199, 199)"],
+      heavy: ["rgb(109, 109, 109)", "rgb(143, 143, 143)", "rgb(163, 163, 163)", "rgb(94, 94, 94)"],
+      sticky: ["rgb(81, 201, 101)", "rgb(61, 212, 86)", "rgb(74, 218, 98)", "rgb(55, 187, 77)"],
+      light: ["rgb(238, 238, 238)", "rgb(255, 255, 255)", "rgb(224, 224, 224)"],
+    }
+
+
+
+    const selectedVariant = bodyVariants[Math.floor(rng() * bodyVariants.length)];
+    const properties = bodyProperties[selectedVariant];
+
     // create svg element given our path and the w3 api
     const pathEl = document.createElementNS(
       "http://www.w3.org/2000/svg",
@@ -141,6 +232,8 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
       y,
       vertices,
       {
+        restitution: properties.restitution,
+        friction: properties.friction,
         collisionFilter: {
           category: 0x0001 // Will be selectable by mouse
         }
@@ -148,14 +241,22 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
       true
     );
 
+    Body.setDensity(svgBody, properties.density);
+    Body.setInertia(svgBody, svgBody.inertia * 0.1);
     
     if (svgBody.parts && svgBody.parts.length > 1) {
       // Skip index 0 as it's the parent body
       for (let i = 1; i < svgBody.parts.length; i++) {
-        svgBody.parts[i].render.fillStyle = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
-        svgBody.parts[i].render.strokeStyle = 'black';
+        svgBody.parts[i].render.fillStyle = bodyColors[selectedVariant][Math.floor(rng() * bodyColors[selectedVariant].length)];
+        svgBody.parts[i].render.strokeStyle = bodyColors[selectedVariant][0];
         svgBody.parts[i].render.lineWidth = 2;
+        svgBody.parts[i].render.opacity = properties.opacity || 1;
       }
+    } else {
+      svgBody.render.fillStyle = bodyColors[selectedVariant][Math.floor(rng() * bodyColors[selectedVariant].length)];
+      svgBody.render.strokeStyle = bodyColors[selectedVariant][0];
+      svgBody.render.lineWidth = 2;
+      svgBody.render.opacity = properties.opacity || 1;
     }
 
     const sceneDimensions = getSceneDimensions();
@@ -325,9 +426,9 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
       const selectedBody = mouseConstraint.body;
       if (selectedBody) {
         if (rotating.left) {
-          selectedBody.torque = -0.1;
+          Body.setAngularVelocity(selectedBody, -0.03);
         } else if (rotating.right) {
-          selectedBody.torque = 0.1;
+          Body.setAngularVelocity(selectedBody, 0.03);
         } else {
           Body.setStatic(selectedBody, true);
           Body.setStatic(selectedBody, false);
@@ -371,8 +472,6 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
-      render.canvas.removeEventListener("wheel", preventScroll);
-      render.canvas.removeEventListener("DOMMouseScroll", preventScroll);
       Render.stop(render);
       Runner.stop(runner);
       Engine.clear(engine);
@@ -421,15 +520,22 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
     await addScore(playerInfo);
   }
 
+
   const promptScore = () => {
     if (!isModalOpen) return null;
+    console.log(highscore);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-charcoal-900 text-anti-flash-white-300 p-6 rounded-lg shadow-lg w-1/3">
           <h2 className="text-2xl font-bold mb-4">Submit Your Score</h2>
           <p>Your final score is: {finalScore?.toFixed(0)}</p>
-          <p className="mb-4">Daily Word: {dailyWord ? "Yes" : "No"}</p>
+          {finalScore > highscore && (
+            <p className="text-viridian-300 font-bold mt-2">New High Score!</p>
+          )}
+          {finalScore < highscore && (
+            <p className="text-anti-flash-white-300 font-bold mt-2">Today's High Score: {highscore}</p>
+          )}
           <input
                 type="string"
                 value={playerInfo.name}
@@ -455,7 +561,7 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
             </button>
             <button
               className="bg-satin-sheen-gold-700 text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md mx-2"
-              onClick={() => setIsModalOpen(false)} 
+              onClick={() => {setIsModalOpen(false); setIsInstructionsOpen(false);}} 
             >
               Cancel
             </button>
@@ -465,8 +571,46 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
     );
   }
 
+  const renderInstructionsModal = () => {
+    if (!isInstructionsOpen) return null;
+  
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-charcoal-900 text-anti-flash-white-300 p-6 rounded-lg shadow-lg w-1/3">
+          <h2 className="text-2xl font-bold mb-4">How to Play</h2>
+          <p className="mb-4">
+            Stack the letters as high as possible without letting them fall! Different letters have different physical properties. Use the following controls:
+          </p>
+          <ul className="list-disc list-inside mb-4">
+            <li><strong>Q:</strong> Rotate left</li>
+            <li><strong>E:</strong> Rotate right</li>
+            <li><strong>Left Mouse:</strong> Drag and drop letters</li>
+            <li><strong>Right Mouse:</strong> Drop in place</li>
+          </ul>
+          <p className="mb-4">
+            Once you're satisfied with your stack, click "Check Score" to see if it's stable. If it is, you can submit your score!
+          </p>
+          <div className="flex justify-end">
+            <button
+              className="bg-viridian-700 text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-viridian-800 transition duration-300 shadow-md mx-2"
+              onClick={() => {setIsModalOpen(false); setIsInstructionsOpen(false);}}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
+      {isCheckingStability && (
+      <div
+        className="fixed inset-0 bg-opacity-0 z-50 pointer-events-auto"
+        style={{ cursor: "not-allowed" }}
+      ></div>
+    )}
       {sceneDimensions.height > 400 &&
       <div>
         <div className="">
@@ -493,7 +637,7 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
             {finalScore &&
             <button 
               className={`${isCheckingStability ? 'bg-satin-sheen-gold-700' : 'bg-cool-grey-700'} text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md mx-2`} 
-              onClick={() => setIsModalOpen(true)} 
+              onClick={() => {setIsInstructionsOpen(false); setIsModalOpen(true);}} 
               disabled={isCheckingStability}
             >
               Submit Score!
@@ -529,6 +673,15 @@ export default function MatterScene({ word = "default", dailyWord=false }) {
       </div>
       )}
       {promptScore()} 
+      {renderInstructionsModal()}
+      <div className="fixed top-0 right-0 text-anti-flash-white-300 p-4 text-center z-40">
+        <button
+          className="bg-cool-grey-700 text-anti-flash-white-300 px-4 py-2 rounded-md cursor-pointer hover:bg-cool-grey-800 transition duration-300 shadow-md mx-2"
+          onClick={() => {setIsInstructionsOpen(true); setIsModalOpen(false);}}
+        >
+          Instructions
+        </button>
+      </div>
     </div>
   );
 }
