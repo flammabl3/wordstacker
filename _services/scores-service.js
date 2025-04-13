@@ -56,8 +56,6 @@ export async function addDay(date, word) {
     daily_word: word,
   });
 
-  const usersCollection = collection(db, "scores", date, "users");
-  await addDoc(usersCollection, {});
 
   return docRef.id;
 }
